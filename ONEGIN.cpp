@@ -2,59 +2,91 @@
 
 int main()
 {
+    size_t num_of_str = 0;
+
+    char** strings = ReadArrOfStrFromFile(INPUT_FILE_NAME, &num_of_str);
+
+    char** original_onegin = CopyArrOfStr(strings, num_of_str);
+
+    FILE* output_file = fopen(OUTPUT_FILE_NAME, "w");
+    assert(output_file);
+
+    QuickSort(strings, num_of_str, sizeof(char*), CompareStringEnc);
+    FPrintArrOfStr(output_file, strings, num_of_str, "ENCYCLOPEDIA SORT");
+    QuickSort(strings, num_of_str, sizeof(char*), CompareStringRhyme);
+    FPrintArrOfStr(output_file, strings, num_of_str, "RHYME SORT");
+    FPrintArrOfStr(output_file, original_onegin, num_of_str, "ORIGINAL ONEGIN");
+
+    CleanMem(strings, original_onegin, num_of_str);
+    fclose(output_file);
+
+    return 0;
+}
+
+void CleanMem( char** str_arr, char** copy_str_arr, size_t num_of_str )
+{
+    for (size_t i = 0; i < num_of_str; i++)
+        free(str_arr[i]);
+    free(str_arr);
+    free(copy_str_arr);
+}
+
+char** ReadArrOfStrFromFile( const char* filename, size_t* num_of_str )
+{
+    FILE* input_file = fopen(filename, "r");
+    assert(input_file);
+
     size_t buffer_size = 128;
+    char** str_arr = (char**) calloc(buffer_size, sizeof(char*));
+    assert(str_arr);
 
-    char** strings = (char**) calloc(buffer_size, sizeof(char*));
-    FILE* READ = fopen("onegin.txt", "r");
-    assert(READ);
-    FILE* WRITE = fopen("out.txt", "w");
-    assert(WRITE);
+    bool file_read_flag = true;
 
-    size_t Strings_Read = 0;
-    bool file_read_flag = 1;
-
-    while (file_read_flag != 0)
+    while (file_read_flag != false)
     {
 
-        if (Strings_Read == buffer_size)
+        if (*num_of_str == buffer_size)
         {
 
             size_t new_buffer_size = buffer_size * 2;
-            char** new_strings = (char**) Recalloc(strings, buffer_size  * sizeof(char*), new_buffer_size * sizeof(char*));
-            strings = new_strings;
+            char** new_str_arr = (char**) Recalloc(str_arr, buffer_size * sizeof(char*), new_buffer_size * sizeof(char*));
+            assert(new_str_arr);
+
+            str_arr = new_str_arr;
             buffer_size = new_buffer_size;
         }
-        MyGetline(&strings[Strings_Read], &file_read_flag, READ);
-
-        Strings_Read += file_read_flag;
+        EOMyGetline(&str_arr[*num_of_str], &file_read_flag, input_file);
+        *num_of_str += file_read_flag;
     }
 
-    char** original_Onegin = (char**) calloc(Strings_Read, sizeof(char*));
-    memcpy(original_Onegin, strings, Strings_Read * sizeof(char*));
+    fclose(input_file);
 
-    QuickSort(strings, Strings_Read, sizeof(char*), CompareStringEnc);
+    return str_arr;
+}
 
-    for (size_t i = 0; i < Strings_Read; i++)
+char** CopyArrOfStr( char** str, size_t num_of_str )
+{
+    assert(str);
+
+    char** copied_arr = (char**) calloc(num_of_str, sizeof(char*));
+    assert(copied_arr);
+
+    memcpy(copied_arr, str, num_of_str * sizeof(char*));
+
+    return copied_arr;
+}
+
+void FPrintArrOfStr( FILE* stream, char** str, size_t num_str, const char* message )
+{
+    assert(str);
+    assert(stream);
+
+    fprintf(stream, "\nTHE BEGINNING OF %s\n\n", message);
+    for (size_t i = 0; i < num_str; i++)
     {
-        fprintf(WRITE, "id = [%d] address =[%p] len = [%d] string = <%s>\n", i, strings[i], strlen(strings[i]), strings[i]);
+        fprintf(stream, "id = [%d] address =[%p] len = [%d] string = <%s>\n", i, str[i], strlen(str[i]), str[i]);
     }
-
-    QuickSort(strings, Strings_Read, sizeof(char*), CompareStringRhyme);
-
-    for (size_t i = 0; i < Strings_Read; i++)
-    {
-        fprintf(WRITE, "id = [%d] address =[%p] len = [%d] string = <%s>\n", i, strings[i], strlen(strings[i]), strings[i]);
-    }
-
-    for (size_t i = 0; i < Strings_Read; i++)
-    {
-        fprintf(WRITE, "id = [%d] address =[%p] len = [%d] string = <%s>\n", i, original_Onegin[i], strlen(original_Onegin[i]), original_Onegin[i]);
-    }
-
-    fclose(READ);
-    fclose(WRITE);
-
-    return 0;
+    fprintf(stream, "\nTHE END OF %s\n\n", message);
 }
 
 void* Recalloc( void* str, size_t previous_size, size_t new_size )
@@ -66,12 +98,13 @@ void* Recalloc( void* str, size_t previous_size, size_t new_size )
 
     return new_str;
 }
-void MyGetline( char** line, bool* read_status, FILE* stream )
+
+void EOMyGetline( char** line, bool* read_status, FILE* stream )
 {
 
     if (line == NULL  || stream == NULL)
     {
-        *read_status = 0;
+        *read_status = false;
         return;
     }
 
@@ -83,7 +116,7 @@ void MyGetline( char** line, bool* read_status, FILE* stream )
         char *new_buf = (char*)calloc(first_size, sizeof(char));
         if (new_buf == NULL)
         {
-            *read_status = 0;
+            *read_status = false;
             return;
         }
         *line = new_buf;
@@ -101,7 +134,7 @@ void MyGetline( char** line, bool* read_status, FILE* stream )
             char* new_buf = (char*) realloc(*line, new_size);
             if (new_buf == NULL)
             {
-                *read_status = 0;
+                *read_status = false;
                 return;
             }
             *line = new_buf;
@@ -115,7 +148,7 @@ void MyGetline( char** line, bool* read_status, FILE* stream )
         (*line)[len++] = (char) c;
     }
 
-    *read_status = 0;
+    *read_status = false;
 }
 
 void QuickSort( void* mas, size_t len, size_t typesize, int (*Compare)(const void* a, const void* b) )
@@ -136,58 +169,44 @@ void QuickSort( void* mas, size_t len, size_t typesize, int (*Compare)(const voi
     QuickSort((uint8_t*)mas + (num + 1) * typesize, len - 1 - num, typesize, Compare);
 }
 
+#define SWAP_BUFFERS_a_AND_b_SIZEOF(SIZE)  do                                      \
+                                            {                                      \
+                                                while (type_size >= sizeof(SIZE))  \
+                                                {                                  \
+                                                    SIZE temp = 0;                 \
+                                                    temp = *((SIZE*)a);            \
+                                                    *((SIZE*)a) = *((SIZE*)b);     \
+                                                    *((SIZE*)b) = temp;            \
+                                                                                   \
+                                                    type_size -= sizeof(SIZE);     \
+                                                    a = ((SIZE*)a + 1);            \
+                                                    b = ((SIZE*)b + 1);            \
+                                                }                                  \
+                                            } while(0)
+
+
 void Swap( void* a, void* b, size_t type_size )
 {
     assert(a);
     assert(b);
 
-    uint64_t temp64 = 0;
-    uint32_t temp32 = 0;
-    uint16_t temp16 = 0;
-    uint8_t  temp8  = 0;
+    SWAP_BUFFERS_a_AND_b_SIZEOF(uint64_t);
+    SWAP_BUFFERS_a_AND_b_SIZEOF(uint32_t);
+    SWAP_BUFFERS_a_AND_b_SIZEOF(uint16_t);
+    SWAP_BUFFERS_a_AND_b_SIZEOF(uint8_t);
 
-    while (type_size >= sizeof(uint64_t))
-    {
-        SWAP_BUFFERS_a_AND_b_SIZEOF(uint64_t, temp64);
-        /*
-                                                //если макрос                                        \
-                                                  SWAP_BUFFERS_a_AND_b_SIZEOF(SIZE)                  \
-                                                  полетит, или я случайно забуду                     \
-                                                  его перекопировать в нужный мне проект,            \
-                                                  то использовать эту часть кода,                    \
-                                                  как руководство по экстренному восстановлению кода \
-                                                  удачи)))
-        temp =  *((uint64_t*)a);
-        *((uint64_t*)a) = *((uint64_t*)b);
-        *((uint64_t*)b) = temp;
 
-        type_size -= sizeof(uint64_t);
-        a = ((uint64_t*)a + 1);
-        b = ((uint64_t*)b + 1);
-        */
-    }
-    if (type_size >= sizeof(uint32_t))
-    {
-        SWAP_BUFFERS_a_AND_b_SIZEOF(uint32_t, temp32);
-    }
-    if (type_size >= sizeof(uint16_t))
-    {
-        SWAP_BUFFERS_a_AND_b_SIZEOF(uint16_t, temp16);
-    }
-    if (type_size >= sizeof(uint8_t))
-    {
-        SWAP_BUFFERS_a_AND_b_SIZEOF(uint8_t, temp8);
-    }
 }
 
+#undef SWAP_BUFFERS_a_AND_b_SIZEOF
 
 int CompareStringEnc( const void* a, const void* b )
 {
     assert(a);
     assert(b);
 
-    const char* first_str = *((const char**)a);
-    const char* second_str = *((const char**)b);
+    const char* first_str = *((const char* const*)a);
+    const char* second_str = *((const char* const*)b);
 
     while (*first_str != '\0' && *second_str != '\0')
     {
@@ -200,6 +219,7 @@ int CompareStringEnc( const void* a, const void* b )
         first_str++;
         second_str++;
     }
+
     return tolower(*first_str) - tolower(*second_str);
 }
 
@@ -208,8 +228,8 @@ int CompareStringRhyme( const void* a, const void* b )
     assert(a);
     assert(b);
 
-    const char* first_str = *((const char**)a);
-    const char* second_str = *((const char**)b);
+    const char* first_str = *((const char* const*)a);
+    const char* second_str = *((const char* const*)b);
 
     size_t len_first = strlen(first_str);
     size_t len_second = strlen(second_str);
