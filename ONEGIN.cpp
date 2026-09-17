@@ -11,10 +11,10 @@ int main()
     FILE* output_file = fopen(OUTPUT_FILE_NAME, "w");
     assert(output_file);
 
-    QuickSort(strings, num_of_str, sizeof(char*), CompareStringEnc);
-    FPrintArrOfStr(output_file, strings, num_of_str, "ENCYCLOPEDIA SORT");
     QuickSort(strings, num_of_str, sizeof(char*), CompareStringRhyme);
     FPrintArrOfStr(output_file, strings, num_of_str, "RHYME SORT");
+    QuickSort(strings, num_of_str, sizeof(char*), CompareStringEnc);
+    FPrintArrOfStr(output_file, strings, num_of_str, "ENCYCLOPEDIA SORT");
     FPrintArrOfStr(output_file, original_onegin, num_of_str, "ORIGINAL ONEGIN");
 
     CleanMem(strings, original_onegin, num_of_str);
@@ -55,7 +55,7 @@ char** ReadArrOfStrFromFile( const char* filename, size_t* num_of_str )
             str_arr = new_str_arr;
             buffer_size = new_buffer_size;
         }
-        EOMyGetline(&str_arr[*num_of_str], &file_read_flag, input_file);
+        file_read_flag = EOMyGetline(&str_arr[*num_of_str], input_file);
         *num_of_str += file_read_flag;
     }
 
@@ -84,7 +84,7 @@ void FPrintArrOfStr( FILE* stream, char** str, size_t num_str, const char* messa
     fprintf(stream, "\nTHE BEGINNING OF %s\n\n", message);
     for (size_t i = 0; i < num_str; i++)
     {
-        fprintf(stream, "id = [%d] address =[%p] len = [%d] string = <%s>\n", i, str[i], strlen(str[i]), str[i]);
+        fprintf(stream, "[%d]:\taddress = [0x%p], len = [%d], string = <%s>\n", i, str[i], strlen(str[i]), str[i]);
     }
     fprintf(stream, "\nTHE END OF %s\n\n", message);
 }
@@ -99,14 +99,11 @@ void* Recalloc( void* str, size_t previous_size, size_t new_size )
     return new_str;
 }
 
-void EOMyGetline( char** line, bool* read_status, FILE* stream )
+bool EOMyGetline( char** line, FILE* stream )
 {
 
     if (line == NULL  || stream == NULL)
-    {
-        *read_status = false;
-        return;
-    }
+        return false;
 
     size_t buffer_len = 0;
 
@@ -115,10 +112,8 @@ void EOMyGetline( char** line, bool* read_status, FILE* stream )
         size_t first_size = 64;
         char *new_buf = (char*)calloc(first_size, sizeof(char));
         if (new_buf == NULL)
-        {
-            *read_status = false;
-            return;
-        }
+            return false;
+
         *line = new_buf;
         buffer_len = first_size;
     }
@@ -133,22 +128,20 @@ void EOMyGetline( char** line, bool* read_status, FILE* stream )
             size_t new_size = buffer_len * 2;
             char* new_buf = (char*) realloc(*line, new_size);
             if (new_buf == NULL)
-            {
-                *read_status = false;
-                return;
-            }
+                return false;
+
             *line = new_buf;
             buffer_len = new_size;
         }
         if (c == '\n')
         {
             (*line)[len] = '\0';
-            return;
+            return true;
         }
         (*line)[len++] = (char) c;
     }
 
-    *read_status = false;
+    return false;
 }
 
 void QuickSort( void* mas, size_t len, size_t typesize, int (*Compare)(const void* a, const void* b) )
@@ -184,7 +177,6 @@ void QuickSort( void* mas, size_t len, size_t typesize, int (*Compare)(const voi
                                                 }                                  \
                                             } while(0)
 
-
 void Swap( void* a, void* b, size_t type_size )
 {
     assert(a);
@@ -214,6 +206,7 @@ int CompareStringEnc( const void* a, const void* b )
             first_str++;
         while (isalpha(*second_str) == 0 && *second_str != '\0')
             second_str++;
+
         if (tolower(*first_str) != tolower(*second_str))
             return tolower(*first_str) - tolower(*second_str);
         first_str++;
@@ -262,3 +255,30 @@ int CompareStringRhyme( const void* a, const void* b )
 
     return tolower(*first_str) - tolower(*second_str);
 }
+
+/* в процессе введения в эксплуатацию
+const char* MyConstStrAlpha( const char* str )
+{
+    assert(str);
+
+    while (isalpha(*str) == 0 && *str != '\0')
+            str++;
+
+    return str;
+}
+
+const char* MyConstStrrAlpha( const char* str, size_t* len )
+{
+    assert(str);
+
+    str += *len;
+
+    while (isalpha(*str) == 0 && *len > 0)
+    {
+        str--;
+        (*len)--;
+    }
+
+    return str;
+}
+*/

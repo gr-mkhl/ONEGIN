@@ -9,7 +9,7 @@
 #include <string.h>
 #include <ctype.h>
 
-void EOMyGetline( char** line, bool* read_status, FILE* stream );
+bool EOMyGetline( char** line, FILE* stream );
 void QuickSort( void* mas, size_t len, size_t typesize, int (*Compare)(const void* a, const void* b) );
 void Swap( void* a, void* b, size_t type_size );
 int CompareStringEnc( const void* a, const void* b );
@@ -21,10 +21,10 @@ char** ReadArrOfStrFromFile( const char* filename, size_t* num_of_str );
 char** CopyArrOfStr( char** str, size_t num_of_str );
 void CleanMem( char** str_arr, char** copy_str_arr, size_t num_of_str );
 
-//макросы-спецификаторы для цветного вывода в консоль НЕ РЕАЛИЗОВАНО
-#define COLOR_RED "\033[31m"
-#define RETURN_COLOR "\033[0m"
-
+/* в процессе введения в эксплуатацию
+const char* MyConstStrAlpha( const char* str );
+const char* MyConstStrrAlpha( const char* str, size_t* len );
+*/
 #define INPUT_FILE_NAME "onegin.txt"
 #define OUTPUT_FILE_NAME "out.txt"
 
