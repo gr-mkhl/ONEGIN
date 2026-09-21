@@ -1,44 +1,31 @@
 #include "ONEGIN_.h"
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <time.h>
 
 int main()
 {
-
     struct FileInfo Input_File = {};
-    clock_t Start = clock();
+
     SetFileName(&Input_File, INPUT_FILE_NAME);
     PrepareBuffer(&Input_File);
     ReadFromFile(&Input_File);
     CountStrings(&Input_File);
     SplitStrings(&Input_File);
 
-    clock_t End = clock();
-    printf("prepare time: %g\n", (double)(End - Start) / CLOCKS_PER_SEC);
 
     FILE* File_out = fopen(OUTPUT_FILE_NAME, "w");
 
-    Start = clock();
-    FPrintArrOfStr(File_out, Input_File.Index, Input_File.NumStrings, "ORIGINAL ONEGIN");
-    End = clock();
-    printf("print original time: %g\n", (double)(End - Start) / CLOCKS_PER_SEC);
 
-
-    Start = clock();
     QuickSort(Input_File.Index, Input_File.NumStrings, sizeof(char*), CompareStringEnc);
     FPrintArrOfStr(File_out, Input_File.Index, Input_File.NumStrings, "ENCYCLOPEDIA SORT");
-    End = clock();
-    printf("encyclopedia sort time: %g\n", (double)(End - Start) / CLOCKS_PER_SEC);
 
-    Start = clock();
     QuickSort(Input_File.Index, Input_File.NumStrings, sizeof(char*), CompareStringRhyme);
     FPrintArrOfStr(File_out, Input_File.Index, Input_File.NumStrings, "RHYME SORT");
-    End = clock();
-    printf("rhyme sort time: %g\n", (double)(End - Start) / CLOCKS_PER_SEC);
+
+    QuickSort(Input_File.Index, Input_File.NumStrings, sizeof(char*), ComparePointersUp);
+    FPrintArrOfStr(File_out, Input_File.Index, Input_File.NumStrings, "ORIGINAL ONEGIN");
 
     fclose(File_out);
+    free(Input_File.Index);
+    free(Input_File.Buffer);
 
     return 0;
 }
@@ -198,6 +185,7 @@ void Swap( void* a, void* b, size_t type_size )
 
 #undef SWAP_BUFFERS_a_AND_b_SIZEOF
 
+
 int CompareStringEnc( const void* a, const void* b )
 {
     assert(a);
@@ -220,6 +208,22 @@ int CompareStringEnc( const void* a, const void* b )
     }
 
     return tolower(*first_str) - tolower(*second_str);
+}
+
+int ComparePointersUp( const void* a, const void* b )
+{
+    assert(a);
+    assert(b);
+
+    const intptr_t first_ptr = *((const intptr_t*)a);
+    const intptr_t second_ptr = *((const intptr_t*)b);
+
+    if (first_ptr > second_ptr)
+        return 1;
+    else if (first_ptr < second_ptr)
+        return -1;
+    else
+        return 0;
 }
 
 int CompareStringRhyme( const void* a, const void* b )

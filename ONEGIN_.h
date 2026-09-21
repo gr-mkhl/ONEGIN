@@ -8,6 +8,9 @@
 #include <assert.h>
 #include <string.h>
 #include <ctype.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #define INPUT_FILE_NAME "onegin.txt"
 #define OUTPUT_FILE_NAME "out_.txt"
@@ -33,6 +36,7 @@ void QuickSort( void* mas, size_t len, size_t typesize, int (*Compare)(const voi
 void Swap( void* a, void* b, size_t type_size );
 int CompareStringEnc( const void* a, const void* b );
 int CompareStringRhyme( const void* a, const void* b );
+int ComparePointersUp( const void* a, const void* b );
 void FPrintArrOfStr( FILE* stream, char** str, size_t num_str, const char* message );
 
 /*
