@@ -3,31 +3,54 @@
 int main()
 {
     struct FileInfo Input_File = {};
+    struct ComparatorInfo Comparators[] = {
+                                            {"ENCYCLOPEDIA SORT", CompareStringsEnc},
+                                            {"RHYME SORT", CompareStringsRhyme},
+                                            {"ORIGINAL TEXT", ComparePointersUp},
+                                          };
 
-    SetFileName(&Input_File, INPUT_FILE_NAME);
-    PrepareBuffer(&Input_File);
-    ReadFromFile(&Input_File);
-    CountStrings(&Input_File);
-    SplitStrings(&Input_File);
+    PrepareFileForSorting(INPUT_FILE_NAME, &Input_File );
+    SortAndWriteToFile(OUTPUT_FILE_NAME, &Input_File, Comparators, sizeof(Comparators)/sizeof(Comparators[0]));
 
-
-    FILE* File_out = fopen(OUTPUT_FILE_NAME, "w");
-
-
-    QuickSort(Input_File.Index, Input_File.NumStrings, sizeof(char*), CompareStringEnc);
-    FPrintArrOfStr(File_out, Input_File.Index, Input_File.NumStrings, "ENCYCLOPEDIA SORT");
-
-    QuickSort(Input_File.Index, Input_File.NumStrings, sizeof(char*), CompareStringRhyme);
-    FPrintArrOfStr(File_out, Input_File.Index, Input_File.NumStrings, "RHYME SORT");
-
-    QuickSort(Input_File.Index, Input_File.NumStrings, sizeof(char*), ComparePointersUp);
-    FPrintArrOfStr(File_out, Input_File.Index, Input_File.NumStrings, "ORIGINAL ONEGIN");
-
-    fclose(File_out);
     free(Input_File.Index);
     free(Input_File.Buffer);
 
     return 0;
+}
+
+void SortAndWriteToFile( const char* filename, struct FileInfo* file,
+                         struct ComparatorInfo comparators[], size_t num_sorts )
+{
+    assert(filename);
+    assert(file);
+    assert(comparators);
+
+    FILE* file_out = fopen(filename, "w");
+    assert(file_out);
+
+    for (size_t i = 0; i < num_sorts; i++)
+    {
+        QuickSort(file->Index, file->NumStrings, sizeof(char*), comparators[i].Comparator);
+        FPrintArrOfStr(file_out, file->Index, file->NumStrings, comparators[i].ComparatorName);
+    }
+
+    int close_status = fclose(file_out);
+    assert(close_status != EOF);
+
+    return;
+}
+void PrepareFileForSorting( const char* filename, struct FileInfo* file )
+{
+    assert(file);
+    assert(filename);
+
+    SetFileName(file, filename);
+    PrepareBuffer(file);
+    ReadFromFile(file);
+    CountStrings(file);
+    SplitStrings(file);
+
+    return;
 }
 
 void SetFileName( struct FileInfo* file, const char* filename )
@@ -126,6 +149,8 @@ void SplitStrings( struct FileInfo* file )
     return;
 }
 
+
+
 void FPrintArrOfStr( FILE* stream, char** str, size_t num_str, const char* message )
 {
     assert(str);
@@ -186,7 +211,7 @@ void Swap( void* a, void* b, size_t type_size )
 #undef SWAP_BUFFERS_a_AND_b_SIZEOF
 
 
-int CompareStringEnc( const void* a, const void* b )
+int CompareStringsEnc( const void* a, const void* b )
 {
     assert(a);
     assert(b);
@@ -210,23 +235,8 @@ int CompareStringEnc( const void* a, const void* b )
     return tolower(*first_str) - tolower(*second_str);
 }
 
-int ComparePointersUp( const void* a, const void* b )
-{
-    assert(a);
-    assert(b);
 
-    const intptr_t first_ptr = *((const intptr_t*)a);
-    const intptr_t second_ptr = *((const intptr_t*)b);
-
-    if (first_ptr > second_ptr)
-        return 1;
-    else if (first_ptr < second_ptr)
-        return -1;
-    else
-        return 0;
-}
-
-int CompareStringRhyme( const void* a, const void* b )
+int CompareStringsRhyme( const void* a, const void* b )
 {
     assert(a);
     assert(b);
@@ -267,3 +277,18 @@ int CompareStringRhyme( const void* a, const void* b )
 }
 
 
+int ComparePointersUp( const void* a, const void* b )
+{
+    assert(a);
+    assert(b);
+
+    const intptr_t first_ptr = *((const intptr_t*)a);
+    const intptr_t second_ptr = *((const intptr_t*)b);
+
+    if (first_ptr > second_ptr)
+        return 1;
+    else if (first_ptr < second_ptr)
+        return -1;
+    else
+        return 0;
+}

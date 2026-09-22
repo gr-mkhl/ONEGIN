@@ -26,6 +26,18 @@ struct FileInfo
     char FileName[100];
 
 };
+
+struct ComparatorInfo
+{
+    const char ComparatorName[100];
+    int (*Comparator)(const void* a, const void* b);
+};
+
+void SortAndWriteToFile( const char* filename, struct FileInfo* file,
+                         struct ComparatorInfo comparators[], size_t num_sorts );
+
+void PrepareFileForSorting( const char* filename, struct FileInfo* file );
+
 void SetFileName( struct FileInfo* file, const char* filename );
 void PrepareBuffer( struct FileInfo* file );
 void ReadFromFile( struct FileInfo* file );
@@ -34,17 +46,9 @@ void SplitStrings( struct FileInfo* file );
 
 void QuickSort( void* mas, size_t len, size_t typesize, int (*Compare)(const void* a, const void* b) );
 void Swap( void* a, void* b, size_t type_size );
-int CompareStringEnc( const void* a, const void* b );
-int CompareStringRhyme( const void* a, const void* b );
+int CompareStringsEnc( const void* a, const void* b );
+int CompareStringsRhyme( const void* a, const void* b );
 int ComparePointersUp( const void* a, const void* b );
 void FPrintArrOfStr( FILE* stream, char** str, size_t num_str, const char* message );
-
-/*
-bool EOMyGetline( char** line, FILE* stream );
-char** ReadArrOfStrFromFile( const char* filename, size_t* num_of_str );
-char** CopyArrOfStr( char** str, size_t num_of_str );
-void CleanMem( char** str_arr, char** copy_str_arr, size_t num_of_str );
-void* Recalloc( void* str, size_t previous_size, size_t new_size );
-*/
 
 #endif
