@@ -1,46 +1,22 @@
 #include "ONEGIN_.h"
 
+const struct ComparatorInfo Comparators[] = {
+                                                {"ENCYCLOPEDIA SORT", CompareStringsEnc},
+                                                {"RHYME SORT", CompareStringsRhyme},
+                                                {"ORIGINAL TEXT", ComparePointersUp}
+                                            };
+
 int main()
 {
-    struct ComparatorInfo Comparators[] = {
-                                            {"ENCYCLOPEDIA SORT", CompareStringsEnc},
-                                            {"RHYME SORT", CompareStringsRhyme},
-                                            {"ORIGINAL TEXT", ComparePointersUp}
-                                          };
-
     struct FileInfo InputFile = {};
     PrepareFileForSorting(INPUT_FILE_NAME, &InputFile);
 
     SortAndWriteToFile(OUTPUT_FILE_NAME, &InputFile, Comparators, sizeof(Comparators)/sizeof(Comparators[0]));
 
-    free(InputFile.Index);
-    free(InputFile.Buffer);
+    freeFileInfo(&InputFile);
 
     return 0;
 }
-
-void SortAndWriteToFile( const char* filename, const struct FileInfo* const file,
-                         struct ComparatorInfo comparators[], size_t num_sorts )
-{
-    assert(filename);
-    assert(file);
-    assert(comparators);
-
-    FILE* file_out = fopen(filename, "w");
-    assert(file_out);
-
-    for (size_t i = 0; i < num_sorts; i++)
-    {
-        QuickSort(file->Index, file->NumStrings, sizeof(char*), comparators[i].Comparator);
-        FPrintArrOfStr(file_out, file->Index, file->NumStrings, comparators[i].ComparatorName);
-    }
-
-    int close_status = fclose(file_out);
-    assert(close_status != EOF);
-
-    return;
-}
-
 
 void PrepareFileForSorting( const char* filename, struct FileInfo* file )
 {
@@ -81,9 +57,6 @@ void PrepareBuffer( struct FileInfo* file )
     file->Buffer = (char*)calloc(file->FileSize + 1, sizeof(char));
     assert(file->Buffer != NULL);
 
-    // Calloc already put zero
-    // file->Buffer[file->FileSize] = '\0';
-
     return;
 }
 
@@ -91,17 +64,17 @@ void ReadFromFile( struct FileInfo* file )
 {
     assert(file);
 
-    file->FileStream = open(file->FileName, O_RDONLY);
+    file->FileStream = open(file->FileName, O_RDONLY);  //TODO Тут должна быть обработка ошибок открытия файлов
     assert(file->FileStream != -1);
 
     file->TextSize = read(file->FileStream, file->Buffer, file->FileSize);
     assert(file->TextSize > 0);
 
+    file->Buffer[file->TextSize] = '\0';  //NOTE - ЭТО ОЧЕНЬ ВАЖНАЯ СТРОКА!!!!
+
     int close_status = close(file->FileStream);
     assert(close_status != -1);
 
-    // Calloc already put zero
-    //file->Buffer[file->TextSize] = '\0';
 
     return;
 }
@@ -113,9 +86,10 @@ void CountStrings( struct FileInfo* file )
 
     char* buffer_ptr = file->Buffer;
 
-    size_t i = 0, n_strings = 0;
+    size_t n_strings = 0;
+    size_t i = 0;
 
-    while (buffer_ptr[i] != '\0')
+    while (buffer_ptr[i] != '\0') //TODO тут должен быть strchr()
     {
         if (buffer_ptr[i] == '\n')
         {
@@ -125,7 +99,6 @@ void CountStrings( struct FileInfo* file )
         i++;
     }
     file->NumStrings = n_strings;
-
     return;
 }
 
@@ -133,36 +106,79 @@ void SplitStrings( struct FileInfo* file )
 {
     assert(file);
 
-    char** index_ptr = (char**)calloc(file->NumStrings, sizeof(char*));
+    String* index_ptr = (String*)calloc(file->NumStrings, sizeof(String));
     assert(index_ptr);
 
-    index_ptr[0] = file->Buffer;
+    index_ptr[0].str = file->Buffer;
+
     char* buffer_ptr = file->Buffer;
     size_t n_strings = file->NumStrings;
 
     size_t str_index = 1;
-    size_t i = 0;
+    size_t i = 0, str_len = 0;
     while (str_index < n_strings)
     {
         if (buffer_ptr[i] == '\0')
-            index_ptr[str_index++] = &buffer_ptr[i + 1];
+        {
+            index_ptr[str_index].str = &buffer_ptr[i + 1];
+            index_ptr[str_index++ - 1].len = str_len;
+            str_len = 0;
+        }
+        else
+        {
+            str_len++; //Не нужно увеличивать str_len на \0 символе
+        }
         i++;
     }
+    index_ptr[str_index].len = str_len;
 
     file->Index = index_ptr;
 
     return;
 }
 
+void SortAndWriteToFile( const char* filename, const struct FileInfo* const file,
+                         const struct ComparatorInfo* const comparators, size_t num_sorts )
+{
+    assert(filename);
+    assert(file);
+    assert(comparators);
 
-void FPrintArrOfStr( FILE* stream, const char* const * const str_arr, size_t num_str, const char* message )
+    FILE* file_out = fopen(filename, "w");     //TODO Тут должна быть обработка ошибок открытия файлов
+    assert(file_out);
+
+    for (size_t i = 0; i < num_sorts; i++)
+    {
+        QuickSort(file->Index, file->NumStrings, sizeof(String), comparators[i].Comparator);
+        FPrintArrOfStr(file_out, file->Index, file->NumStrings, comparators[i].ComparatorName);
+    }
+
+    int close_status = fclose(file_out);
+    assert(close_status != EOF);
+
+    return;
+}
+
+void freeFileInfo( struct FileInfo* file )
+{
+    free(file->Index);
+    free(file->Buffer);
+
+    return;
+}
+
+
+void FPrintArrOfStr( FILE* stream, String* str_arr, size_t num_str, const char* message )
 {
     assert(str_arr);
     assert(stream);
 
     fprintf(stream, "\nTHE BEGINNING OF %s\n\n", message);
     for (size_t i = 0; i < num_str; i++)
-        fprintf(stream, "[%d]:\taddress = [0x%p], len = [%d], string = <%s>\n", i, str_arr[i], strlen(str_arr[i]), str_arr[i]);
+    {
+        fprintf(stream, "[%d]:\taddress = [0x%p], strlen = [%d], structlen = [%u], string = <%s>\n",
+                i, str_arr[i].str, strlen(str_arr[i].str), str_arr[i].len, str_arr[i].str);
+    }
     fprintf(stream, "\nTHE END OF %s\n\n", message);
 }
 
@@ -221,8 +237,11 @@ int CompareStringsEnc( const void* a, const void* b )
     assert(a);
     assert(b);
 
-    const char* first_str = *((const char* const*)a);
-    const char* second_str = *((const char* const*)b);
+    //const char* first_str = *((const char* const * const)a);
+    //const char* second_str = *((const char* const * const)b);
+
+    const char* first_str = ((const String*)a)->str;
+    const char* second_str = ((const String*)b)->str;
 
     while (*first_str != '\0' && *second_str != '\0')
     {
@@ -241,16 +260,16 @@ int CompareStringsEnc( const void* a, const void* b )
 }
 
 
-int CompareStringsRhyme( const void* a, const void* b )
+int CompareStringsRhyme( const void* a, const void* b ) //TODO НАДО ПЕРЕДЕЛАТЬ ВСЕ ПОД СТРУКТУРЫ. ВСЁ.
 {
     assert(a);
     assert(b);
 
-    const char* first_str = *((const char* const*)a);
-    const char* second_str = *((const char* const*)b);
+    const char* first_str = ((const String*)a)->str;
+    const char* second_str = ((const String*)b)->str;
 
-    size_t len_first = strlen(first_str);
-    size_t len_second = strlen(second_str);
+    const size_t len_first = ((const String*)a)->len;
+    const size_t len_second = ((const String*)b)->len;
 
     first_str += len_first;
     second_str += len_second;
