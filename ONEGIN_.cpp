@@ -2,23 +2,24 @@
 
 int main()
 {
-    struct FileInfo Input_File = {};
     struct ComparatorInfo Comparators[] = {
                                             {"ENCYCLOPEDIA SORT", CompareStringsEnc},
                                             {"RHYME SORT", CompareStringsRhyme},
-                                            {"ORIGINAL TEXT", ComparePointersUp},
+                                            {"ORIGINAL TEXT", ComparePointersUp}
                                           };
 
-    PrepareFileForSorting(INPUT_FILE_NAME, &Input_File );
-    SortAndWriteToFile(OUTPUT_FILE_NAME, &Input_File, Comparators, sizeof(Comparators)/sizeof(Comparators[0]));
+    struct FileInfo InputFile = {};
+    PrepareFileForSorting(INPUT_FILE_NAME, &InputFile);
 
-    free(Input_File.Index);
-    free(Input_File.Buffer);
+    SortAndWriteToFile(OUTPUT_FILE_NAME, &InputFile, Comparators, sizeof(Comparators)/sizeof(Comparators[0]));
+
+    free(InputFile.Index);
+    free(InputFile.Buffer);
 
     return 0;
 }
 
-void SortAndWriteToFile( const char* filename, struct FileInfo* file,
+void SortAndWriteToFile( const char* filename, const struct FileInfo* const file,
                          struct ComparatorInfo comparators[], size_t num_sorts )
 {
     assert(filename);
@@ -39,6 +40,8 @@ void SortAndWriteToFile( const char* filename, struct FileInfo* file,
 
     return;
 }
+
+
 void PrepareFileForSorting( const char* filename, struct FileInfo* file )
 {
     assert(file);
@@ -78,7 +81,8 @@ void PrepareBuffer( struct FileInfo* file )
     file->Buffer = (char*)calloc(file->FileSize + 1, sizeof(char));
     assert(file->Buffer != NULL);
 
-    file->Buffer[file->FileSize] = '\0';
+    // Calloc already put zero
+    // file->Buffer[file->FileSize] = '\0';
 
     return;
 }
@@ -96,7 +100,8 @@ void ReadFromFile( struct FileInfo* file )
     int close_status = close(file->FileStream);
     assert(close_status != -1);
 
-    file->Buffer[file->TextSize] = '\0';
+    // Calloc already put zero
+    //file->Buffer[file->TextSize] = '\0';
 
     return;
 }
@@ -150,15 +155,14 @@ void SplitStrings( struct FileInfo* file )
 }
 
 
-
-void FPrintArrOfStr( FILE* stream, char** str, size_t num_str, const char* message )
+void FPrintArrOfStr( FILE* stream, const char* const * const str_arr, size_t num_str, const char* message )
 {
-    assert(str);
+    assert(str_arr);
     assert(stream);
 
     fprintf(stream, "\nTHE BEGINNING OF %s\n\n", message);
     for (size_t i = 0; i < num_str; i++)
-        fprintf(stream, "[%d]:\taddress = [0x%p], len = [%d], string = <%s>\n", i, str[i], strlen(str[i]), str[i]);
+        fprintf(stream, "[%d]:\taddress = [0x%p], len = [%d], string = <%s>\n", i, str_arr[i], strlen(str_arr[i]), str_arr[i]);
     fprintf(stream, "\nTHE END OF %s\n\n", message);
 }
 
@@ -194,6 +198,7 @@ void QuickSort( void* mas, size_t len, size_t typesize, int (*Compare)(const voi
                                                     b = ((SIZE*)b + 1);            \
                                                 }                                  \
                                             } while(0)
+
 
 void Swap( void* a, void* b, size_t type_size )
 {

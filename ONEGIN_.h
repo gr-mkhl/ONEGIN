@@ -33,7 +33,7 @@ struct ComparatorInfo
     int (*Comparator)(const void* a, const void* b);
 };
 
-void SortAndWriteToFile( const char* filename, struct FileInfo* file,
+void SortAndWriteToFile( const char* filename, const struct FileInfo* const file,
                          struct ComparatorInfo comparators[], size_t num_sorts );
 
 void PrepareFileForSorting( const char* filename, struct FileInfo* file );
@@ -49,6 +49,6 @@ void Swap( void* a, void* b, size_t type_size );
 int CompareStringsEnc( const void* a, const void* b );
 int CompareStringsRhyme( const void* a, const void* b );
 int ComparePointersUp( const void* a, const void* b );
-void FPrintArrOfStr( FILE* stream, char** str, size_t num_str, const char* message );
+void FPrintArrOfStr( FILE* stream, const char* const * const str_arr, size_t num_str, const char* message );
 
 #endif
