@@ -6,16 +6,40 @@ const struct ComparatorInfo Comparators[] = {
                                                 {"ORIGINAL TEXT", ComparePointersUp}
                                             };
 
-int main()
+int main( int argc, char** argv )
 {
     struct FileInfo InputFile = {};
+
+    SetFileName(&InputFile, argc, argv);
+
     PrepareFileForSorting(INPUT_FILE_NAME, &InputFile);
 
-    SortAndWriteToFile(OUTPUT_FILE_NAME, &InputFile, Comparators, sizeof(Comparators)/sizeof(Comparators[0]));
+    SortAndWriteToFile(OUTPUT_FILE_NAME, &InputFile, Comparators, ARRAY_SIZE(Comparators));
 
-    freeFileInfo(&InputFile);
+    FreeFileInfo(&InputFile);
 
     return 0;
+}
+
+void SetFileName( struct FileInfo* file, int argc, char** argv )
+{
+    assert(file);
+
+    char* set_file_status = NULL;
+
+    if (argc > 1)
+    {
+        assert(strlen(argv[1]) + 1 <= MAX_NAME_LEN);
+        set_file_status = strcpy(file->FileName, argv[1]);
+    }
+    else
+    {
+        assert(strlen(INPUT_FILE_NAME) + 1 <= MAX_NAME_LEN);
+        set_file_status = strcpy(file->FileName, INPUT_FILE_NAME);
+    }
+    assert(set_file_status);
+
+    return;
 }
 
 void PrepareFileForSorting( const char* filename, struct FileInfo* file )
@@ -23,7 +47,6 @@ void PrepareFileForSorting( const char* filename, struct FileInfo* file )
     assert(file);
     assert(filename);
 
-    SetFileName(file, filename);
     PrepareBuffer(file);
     ReadFromFile(file);
     CountStrings(file);
@@ -32,16 +55,6 @@ void PrepareFileForSorting( const char* filename, struct FileInfo* file )
     return;
 }
 
-void SetFileName( struct FileInfo* file, const char* filename )
-{
-    assert(file);
-    assert(filename);
-
-    char* set_file_status = strcpy(file->FileName, filename);
-    assert(set_file_status);
-
-    return;
-}
 
 void PrepareBuffer( struct FileInfo* file )
 {
@@ -50,7 +63,11 @@ void PrepareBuffer( struct FileInfo* file )
     struct stat my_file = {};
 
     int stat_status = stat(file->FileName, &my_file);
-    assert(stat_status != -1);
+    if (stat_status < 0)
+    {
+        perror("stat() failed");
+        assert(stat_status >= 0);
+    }
 
     file->FileSize = my_file.st_size;
 
@@ -64,16 +81,28 @@ void ReadFromFile( struct FileInfo* file )
 {
     assert(file);
 
-    file->FileStream = open(file->FileName, O_RDONLY);  //TODO Тут должна быть обработка ошибок открытия файлов
-    assert(file->FileStream != -1);
+    file->FileStream = open(file->FileName, O_RDONLY);
+    if (file->FileStream < 0)
+    {
+        perror("open() failed");
+        assert(file->FileStream >= 0);
+    }
 
     file->TextSize = read(file->FileStream, file->Buffer, file->FileSize);
-    assert(file->TextSize > 0);
+    if (file->TextSize < 0)
+    {
+        perror("read() failed");
+        assert(file->TextSize >= 0);
+    }
 
-    file->Buffer[file->TextSize] = '\0';  //NOTE - ЭТО ОЧЕНЬ ВАЖНАЯ СТРОКА!!!!
+    file->Buffer[file->TextSize] = '\0';  //NOTE - ЭТО ОЧЕНЬ ВАЖНАЯ СТРОКА(не трогать)!!!!
 
     int close_status = close(file->FileStream);
-    assert(close_status != -1);
+    if (close_status < 0)
+    {
+        perror("close() failed");
+        assert(close_status >= 0);
+    }
 
 
     return;
@@ -87,17 +116,15 @@ void CountStrings( struct FileInfo* file )
     char* buffer_ptr = file->Buffer;
 
     size_t n_strings = 0;
-    size_t i = 0;
 
-    while (buffer_ptr[i] != '\0') //TODO тут должен быть strchr()
+    while (*buffer_ptr != '\0')
     {
-        if (buffer_ptr[i] == '\n')
-        {
-            buffer_ptr[i] = '\0';
-            n_strings++;
-        }
-        i++;
+        buffer_ptr = strchr(buffer_ptr, '\n');
+        *buffer_ptr = '\0';
+        buffer_ptr++;
+        n_strings++;
     }
+
     file->NumStrings = n_strings;
     return;
 }
@@ -126,7 +153,7 @@ void SplitStrings( struct FileInfo* file )
         }
         else
         {
-            str_len++; //Не нужно увеличивать str_len на \0 символе
+            str_len++; //Не нужно увеличивать str_len на '\0' символе
         }
         i++;
     }
@@ -144,8 +171,12 @@ void SortAndWriteToFile( const char* filename, const struct FileInfo* const file
     assert(file);
     assert(comparators);
 
-    FILE* file_out = fopen(filename, "w");     //TODO Тут должна быть обработка ошибок открытия файлов
-    assert(file_out);
+    FILE* file_out = fopen(filename, "w");
+    if (file_out == NULL)
+    {
+        perror("fopen() failed");
+        assert(file_out);
+    }
 
     for (size_t i = 0; i < num_sorts; i++)
     {
@@ -154,12 +185,16 @@ void SortAndWriteToFile( const char* filename, const struct FileInfo* const file
     }
 
     int close_status = fclose(file_out);
-    assert(close_status != EOF);
+    if (close_status == EOF)
+    {
+        perror("fclose() failed");
+        assert(close_status != EOF);
+    }
 
     return;
 }
 
-void freeFileInfo( struct FileInfo* file )
+void FreeFileInfo( struct FileInfo* file )
 {
     free(file->Index);
     free(file->Buffer);
@@ -176,8 +211,8 @@ void FPrintArrOfStr( FILE* stream, String* str_arr, size_t num_str, const char* 
     fprintf(stream, "\nTHE BEGINNING OF %s\n\n", message);
     for (size_t i = 0; i < num_str; i++)
     {
-        fprintf(stream, "[%d]:\taddress = [0x%p], strlen = [%d], structlen = [%u], string = <%s>\n",
-                i, str_arr[i].str, strlen(str_arr[i].str), str_arr[i].len, str_arr[i].str);
+        fprintf(stream, "[%d]:\taddress = [0x%p], strlen = [%d], string = <%s>\n",
+                i, &str_arr[i].str, str_arr[i].len, str_arr[i].str);
     }
     fprintf(stream, "\nTHE END OF %s\n\n", message);
 }
@@ -237,9 +272,6 @@ int CompareStringsEnc( const void* a, const void* b )
     assert(a);
     assert(b);
 
-    //const char* first_str = *((const char* const * const)a);
-    //const char* second_str = *((const char* const * const)b);
-
     const char* first_str = ((const String*)a)->str;
     const char* second_str = ((const String*)b)->str;
 
@@ -260,7 +292,7 @@ int CompareStringsEnc( const void* a, const void* b )
 }
 
 
-int CompareStringsRhyme( const void* a, const void* b ) //TODO НАДО ПЕРЕДЕЛАТЬ ВСЕ ПОД СТРУКТУРЫ. ВСЁ.
+int CompareStringsRhyme( const void* a, const void* b )
 {
     assert(a);
     assert(b);
@@ -268,24 +300,27 @@ int CompareStringsRhyme( const void* a, const void* b ) //TODO НАДО ПЕРЕ
     const char* first_str = ((const String*)a)->str;
     const char* second_str = ((const String*)b)->str;
 
-    const size_t len_first = ((const String*)a)->len;
-    const size_t len_second = ((const String*)b)->len;
+    size_t len_first = ((const String*)a)->len;
+    size_t len_second = ((const String*)b)->len;
 
     first_str += len_first;
     second_str += len_second;
 
     while (len_first >= 1 && len_second >= 1)
     {
+
         while (isalpha(*first_str) == 0 && len_first > 0)
         {
             first_str--;
             len_first--;
         }
+
         while (isalpha(*second_str) == 0 && len_second > 0)
         {
             second_str--;
             len_second--;
         }
+
         if (len_first == 0 || len_second == 0 || tolower(*first_str) != tolower(*second_str))
             return tolower(*first_str) - tolower(*second_str);
         first_str--;
@@ -299,7 +334,6 @@ int CompareStringsRhyme( const void* a, const void* b ) //TODO НАДО ПЕРЕ
 
     return tolower(*first_str) - tolower(*second_str);
 }
-
 
 int ComparePointersUp( const void* a, const void* b )
 {
