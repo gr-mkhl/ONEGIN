@@ -7,14 +7,14 @@ const struct ComparatorInfo Comparators[] = {
                                                 {"RHYME SORT", CompareStringsRhyme},
                                                 {"ORIGINAL TEXT", ComparePointersUp}
                                             };
-
 int main( int argc, char** argv )
 {
     struct FileInfo InputFile = {};
-
     SetFileName(&InputFile, argc, argv);
 
-    PrepareFileForSorting(INPUT_FILE_NAME, &InputFile);
+    //printf("1\n"); //БОГОТВОРЯЩАЯ ЕДИНИЦА, СПАСИ И СОХРАНИ
+
+    PrepareFileForSorting(&InputFile);
 
     SortAndWriteToFile(OUTPUT_FILE_NAME, &InputFile, Comparators, ARRAY_SIZE(Comparators));
 
@@ -44,11 +44,9 @@ void SetFileName( struct FileInfo* file, int argc, char** argv )
     return;
 }
 
-void PrepareFileForSorting( const char* filename, struct FileInfo* file )
+void PrepareFileForSorting( struct FileInfo* file )
 {
     assert(file);
-    assert(filename);
-
     PrepareBuffer(file);
     ReadFromFile(file);
     CountStrings(file);
@@ -65,6 +63,7 @@ void PrepareBuffer( struct FileInfo* file )
     struct stat my_file = {};
 
     int stat_status = stat(file->FileName, &my_file);
+
     if (stat_status < 0)
     {
         perror("stat() failed");
@@ -122,6 +121,8 @@ void CountStrings( struct FileInfo* file )
     while (*buffer_ptr != '\0')
     {
         buffer_ptr = strchr(buffer_ptr, '\n');
+        if (buffer_ptr == NULL)
+            break;
         *buffer_ptr = '\0';
         buffer_ptr++;
         n_strings++;
@@ -174,12 +175,12 @@ void SortAndWriteToFile( const char* filename, const struct FileInfo* const file
     assert(comparators);
 
     FILE* file_out = fopen(filename, "w");
+
     if (file_out == NULL)
     {
         perror("fopen() failed");
         assert(file_out);
     }
-
     for (size_t i = 0; i < num_sorts; i++)
     {
         QuickSort(file->Index, file->NumStrings, sizeof(String), comparators[i].Comparator);
@@ -211,13 +212,14 @@ void FPrintArrOfStr( FILE* stream, String* str_arr, size_t num_str, const char* 
     assert(stream);
 
     fprintf(stream, "\nTHE BEGINNING OF %s\n\n", message);
+
     for (size_t i = 0; i < num_str; i++)
     {
         #if MODE == 1
             if (str_arr[i].str[0] != '\0')
                 fprintf(stream, "%s\n", str_arr[i].str);
         #elif MODE == 0
-            fprintf(stream, "[%d]:\taddress = [0x%p], strlen = [%d], string = <%s>\n",
+            fprintf(stream, "[%zd]:\taddress = [0x%p], strlen = [%zd], string = <%s>\n",
                      i, &str_arr[i].str, str_arr[i].len, str_arr[i].str);
         #endif
     }

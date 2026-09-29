@@ -14,7 +14,7 @@
 
 #define ARRAY_SIZE(X) (sizeof(X) / sizeof(X[0]))
 #define MAX_NAME_LEN 200
-#define INPUT_FILE_NAME "onegin.txt"
+#define INPUT_FILE_NAME "W&P.txt"
 #define OUTPUT_FILE_NAME "out_.txt"
 
 
@@ -27,7 +27,7 @@ struct String
 struct FileInfo
 {
     int FileStream;
-    size_t FileSize;
+    unsigned int FileSize;
     ssize_t TextSize;
     size_t NumStrings;
     char* Buffer;
@@ -44,7 +44,7 @@ struct ComparatorInfo
 
 void SetFileName( struct FileInfo* file, int argc, char** argv );
 
-void PrepareFileForSorting( const char* filename, struct FileInfo* file );
+void PrepareFileForSorting( struct FileInfo* file );
 
 void SortAndWriteToFile( const char* filename, const struct FileInfo* const file,
                          const struct ComparatorInfo* const comparators, size_t num_sorts );
