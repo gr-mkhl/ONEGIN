@@ -13,8 +13,9 @@
 #include <errno.h>
 
 #define ARRAY_SIZE(X) (sizeof(X) / sizeof(X[0]))
+
 #define MAX_NAME_LEN 200
-#define INPUT_FILE_NAME "W&P.txt"
+#define INPUT_FILE_NAME "onegin.txt"
 #define OUTPUT_FILE_NAME "out_.txt"
 
 
@@ -27,7 +28,7 @@ struct String
 struct FileInfo
 {
     int FileStream;
-    unsigned int FileSize;
+    size_t FileSize;
     ssize_t TextSize;
     size_t NumStrings;
     char* Buffer;

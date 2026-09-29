@@ -12,8 +12,6 @@ int main( int argc, char** argv )
     struct FileInfo InputFile = {};
     SetFileName(&InputFile, argc, argv);
 
-    //printf("1\n"); //БОГОТВОРЯЩАЯ ЕДИНИЦА, СПАСИ И СОХРАНИ
-
     PrepareFileForSorting(&InputFile);
 
     SortAndWriteToFile(OUTPUT_FILE_NAME, &InputFile, Comparators, ARRAY_SIZE(Comparators));
@@ -181,11 +179,17 @@ void SortAndWriteToFile( const char* filename, const struct FileInfo* const file
         perror("fopen() failed");
         assert(file_out);
     }
+
+    //printf("FileName:%s\nFileStream: %d\nFileSize: %zu\nTextSize: %zd\nNumStrings: %zu\n",
+    //        file->FileName, file->FileStream, file->FileSize, file->TextSize, file->NumStrings);
+
+
     for (size_t i = 0; i < num_sorts; i++)
     {
         QuickSort(file->Index, file->NumStrings, sizeof(String), comparators[i].Comparator);
         FPrintArrOfStr(file_out, file->Index, file->NumStrings, comparators[i].ComparatorName);
     }
+
 
     int close_status = fclose(file_out);
     if (close_status == EOF)
@@ -301,15 +305,6 @@ int CompareStringsEnc( const void* a, const void* b )
 }
 
 
-#define STRRALPHA_MACROS(POINTER, LEN)  do                                             \
-                                        {                                              \
-                                            while (isalpha(*POINTER) == 0 && LEN > 0)  \
-                                            {                                          \
-                                                POINTER--;                             \
-                                                LEN--;                                 \
-                                            }                                          \
-                                        } while(0)
-
 int CompareStringsRhyme( const void* a, const void* b )
 {
     assert(a);
@@ -326,8 +321,16 @@ int CompareStringsRhyme( const void* a, const void* b )
 
     while (len_first >= 1 && len_second >= 1)
     {
-        STRRALPHA_MACROS(first_str, len_first);
-        STRRALPHA_MACROS(second_str, len_second);
+        while (isalpha(*first_str) == 0 && len_first > 0)
+        {
+            first_str--;
+            len_first--;
+        }
+        while (isalpha(*second_str) == 0 && len_second > 0)
+        {
+            second_str--;
+            len_second--;
+        }
 
         if (len_first == 0 || len_second == 0 || tolower(*first_str) != tolower(*second_str))
             return tolower(*first_str) - tolower(*second_str);
@@ -342,8 +345,6 @@ int CompareStringsRhyme( const void* a, const void* b )
 
     return tolower(*first_str) - tolower(*second_str);
 }
-
-#undef STRRALPHA_MACROS
 
 int ComparePointersUp( const void* a, const void* b )
 {
