@@ -1,50 +1,50 @@
 #include "ONEGIN_.h"
-
-#define MODE 0 // 1 - пользовательский режим, 0 - режим отладки
-
-const struct ComparatorInfo Comparators[] = {
-                                                {"ENCYCLOPEDIA SORT", CompareStringsEnc},
-                                                {"RHYME SORT", CompareStringsRhyme},
-                                                {"ORIGINAL TEXT", ComparePointersUp}
-                                            };
-int main( int argc, char** argv )
+#define MODE 0
+struct ComparatorInfo Comparators[] = {
+                                        {"ENCYCLOPEDIA SORT", CompareStringsEnc},
+                                        {"RHYME SORT", CompareStringsRhyme},
+                                        {"ORIGINAL TEXT", ComparePointersUp},
+                                      };
+int main()
 {
-    struct FileInfo InputFile = {};
-    SetFileName(&InputFile, argc, argv);
+    struct FileInfo Input_File = {};
 
-    PrepareFileForSorting(&InputFile);
+    PrepareFileForSorting(INPUT_FILE_NAME, &Input_File );
+    SortAndWriteToFile(OUTPUT_FILE_NAME, &Input_File, Comparators, ARRAY_LEN(Comparators));
 
-    SortAndWriteToFile(OUTPUT_FILE_NAME, &InputFile, Comparators, ARRAY_SIZE(Comparators));
-
-    FreeFileInfo(&InputFile);
+    free(Input_File.Index);
+    free(Input_File.Buffer);
 
     return 0;
 }
 
-void SetFileName( struct FileInfo* file, int argc, char** argv )
+void SortAndWriteToFile( const char* filename, struct FileInfo* file,
+                         struct ComparatorInfo comparators[], size_t num_sorts )
 {
+    assert(filename);
     assert(file);
+    assert(comparators);
 
-    char* set_file_status = NULL;
+    FILE* file_out = fopen(filename, "w");
+    assert(file_out);
 
-    if (argc > 1)
+    for (size_t i = 0; i < num_sorts; i++)
     {
-        assert(strlen(argv[1]) + 1 <= MAX_NAME_LEN);
-        set_file_status = strcpy(file->FileName, argv[1]);
+        QuickSort(file->Index, file->NumStrings, sizeof(char*), comparators[i].Comparator);
+        FPrintArrOfStr(file_out, file->Index, file->NumStrings, comparators[i].ComparatorName);
     }
-    else
-    {
-        assert(strlen(INPUT_FILE_NAME) + 1 <= MAX_NAME_LEN);
-        set_file_status = strcpy(file->FileName, INPUT_FILE_NAME);
-    }
-    assert(set_file_status);
+
+    int close_status = fclose(file_out);
+    assert(close_status != EOF);
 
     return;
 }
-
-void PrepareFileForSorting( struct FileInfo* file )
+void PrepareFileForSorting( const char* filename, struct FileInfo* file )
 {
     assert(file);
+    assert(filename);
+
+    SetFileName(file, filename);
     PrepareBuffer(file);
     ReadFromFile(file);
     CountStrings(file);
@@ -53,6 +53,16 @@ void PrepareFileForSorting( struct FileInfo* file )
     return;
 }
 
+void SetFileName( struct FileInfo* file, const char* filename )
+{
+    assert(file);
+    assert(filename);
+
+    char* set_file_status = strcpy(file->FileName, filename);
+    assert(set_file_status);
+
+    return;
+}
 
 void PrepareBuffer( struct FileInfo* file )
 {
@@ -61,17 +71,14 @@ void PrepareBuffer( struct FileInfo* file )
     struct stat my_file = {};
 
     int stat_status = stat(file->FileName, &my_file);
-
-    if (stat_status < 0)
-    {
-        perror("stat() failed");
-        assert(stat_status >= 0);
-    }
+    assert(stat_status != -1);
 
     file->FileSize = my_file.st_size;
 
     file->Buffer = (char*)calloc(file->FileSize + 1, sizeof(char));
     assert(file->Buffer != NULL);
+
+    file->Buffer[file->FileSize] = '\0';
 
     return;
 }
@@ -81,28 +88,15 @@ void ReadFromFile( struct FileInfo* file )
     assert(file);
 
     file->FileStream = open(file->FileName, O_RDONLY);
-    if (file->FileStream < 0)
-    {
-        perror("open() failed");
-        assert(file->FileStream >= 0);
-    }
+    assert(file->FileStream != -1);
 
     file->TextSize = read(file->FileStream, file->Buffer, file->FileSize);
-    if (file->TextSize < 0)
-    {
-        perror("read() failed");
-        assert(file->TextSize >= 0);
-    }
-
-    file->Buffer[file->TextSize] = '\0';  //NOTE - ЭТО ОЧЕНЬ ВАЖНАЯ СТРОКА(не трогать)!!!!
+    assert(file->TextSize > 0);
 
     int close_status = close(file->FileStream);
-    if (close_status < 0)
-    {
-        perror("close() failed");
-        assert(close_status >= 0);
-    }
+    assert(close_status != -1);
 
+    file->Buffer[file->TextSize] = '\0';
 
     return;
 }
@@ -114,19 +108,19 @@ void CountStrings( struct FileInfo* file )
 
     char* buffer_ptr = file->Buffer;
 
-    size_t n_strings = 0;
+    size_t i = 0, n_strings = 0;
 
-    while (*buffer_ptr != '\0')
+    while (buffer_ptr[i] != '\0')
     {
-        buffer_ptr = strchr(buffer_ptr, '\n');
-        if (buffer_ptr == NULL)
-            break;
-        *buffer_ptr = '\0';
-        buffer_ptr++;
-        n_strings++;
+        if (buffer_ptr[i] == '\n')
+        {
+            buffer_ptr[i] = '\0';
+            n_strings++;
+        }
+        i++;
     }
-
     file->NumStrings = n_strings;
+
     return;
 }
 
@@ -134,83 +128,30 @@ void SplitStrings( struct FileInfo* file )
 {
     assert(file);
 
-    String* index_ptr = (String*)calloc(file->NumStrings, sizeof(String));
+    char** index_ptr = (char**)calloc(file->NumStrings, sizeof(char*));
     assert(index_ptr);
 
-    index_ptr[0].str = file->Buffer;
-
+    index_ptr[0] = file->Buffer;
     char* buffer_ptr = file->Buffer;
     size_t n_strings = file->NumStrings;
 
     size_t str_index = 1;
-    size_t i = 0, str_len = 0;
+    size_t i = 0;
     while (str_index < n_strings)
     {
         if (buffer_ptr[i] == '\0')
-        {
-            index_ptr[str_index].str = &buffer_ptr[i + 1];
-            index_ptr[str_index++ - 1].len = str_len;
-            str_len = 0;
-        }
-        else
-        {
-            str_len++; //Не нужно увеличивать str_len на '\0' символе
-        }
+            index_ptr[str_index++] = &buffer_ptr[i + 1];
         i++;
     }
-    index_ptr[str_index].len = str_len;
 
     file->Index = index_ptr;
 
     return;
 }
 
-void SortAndWriteToFile( const char* filename, const struct FileInfo* const file,
-                         const struct ComparatorInfo* const comparators, size_t num_sorts )
-{
-    assert(filename);
-    assert(file);
-    assert(comparators);
-
-    FILE* file_out = fopen(filename, "w");
-
-    if (file_out == NULL)
-    {
-        perror("fopen() failed");
-        assert(file_out);
-    }
-
-    //printf("FileName:%s\nFileStream: %d\nFileSize: %zu\nTextSize: %zd\nNumStrings: %zu\n",
-    //        file->FileName, file->FileStream, file->FileSize, file->TextSize, file->NumStrings);
 
 
-    for (size_t i = 0; i < num_sorts; i++)
-    {
-        QuickSort(file->Index, file->NumStrings, sizeof(String), comparators[i].Comparator);
-        FPrintArrOfStr(file_out, file->Index, file->NumStrings, comparators[i].ComparatorName);
-    }
-
-
-    int close_status = fclose(file_out);
-    if (close_status == EOF)
-    {
-        perror("fclose() failed");
-        assert(close_status != EOF);
-    }
-
-    return;
-}
-
-void FreeFileInfo( struct FileInfo* file )
-{
-    free(file->Index);
-    free(file->Buffer);
-
-    return;
-}
-
-
-void FPrintArrOfStr( FILE* stream, String* str_arr, size_t num_str, const char* message )
+void FPrintArrOfStr( FILE* stream, char** str_arr, size_t num_str, const char* message )
 {
     assert(str_arr);
     assert(stream);
@@ -220,11 +161,11 @@ void FPrintArrOfStr( FILE* stream, String* str_arr, size_t num_str, const char* 
     for (size_t i = 0; i < num_str; i++)
     {
         #if MODE == 1
-            if (str_arr[i].str[0] != '\0')
-                fprintf(stream, "%s\n", str_arr[i].str);
+            if (*str_arr[i] != '\0')
+                fprintf(stream, "%s\n", str_arr[i]);
         #elif MODE == 0
-            fprintf(stream, "[%zd]:\taddress = [0x%p], strlen = [%zd], string = <%s>\n",
-                     i, &str_arr[i].str, str_arr[i].len, str_arr[i].str);
+            fprintf(stream, "[%zu]:\taddress = [0x%p], strlen = [%zu], string = <%s>\n",
+                     i, &str_arr[i], str_arr[i], str_arr[i]);
         #endif
     }
     fprintf(stream, "\nTHE END OF %s\n\n", message);
@@ -248,21 +189,20 @@ void QuickSort( void* mas, size_t len, size_t typesize, int (*Compare)(const voi
     QuickSort((uint8_t*)mas + (num + 1) * typesize, len - 1 - num, typesize, Compare);
 }
 
-#define SWAP_BUFFERS_a_AND_b_SIZEOF(SIZE)  do                                      \
-                                            {                                      \
-                                                while (type_size >= sizeof(SIZE))  \
-                                                {                                  \
-                                                    SIZE temp = 0;                 \
-                                                    temp = *((SIZE*)a);            \
-                                                    *((SIZE*)a) = *((SIZE*)b);     \
-                                                    *((SIZE*)b) = temp;            \
-                                                                                   \
-                                                    type_size -= sizeof(SIZE);     \
-                                                    a = ((SIZE*)a + 1);            \
-                                                    b = ((SIZE*)b + 1);            \
-                                                }                                  \
-                                            } while(0)
-
+#define SWAP_BUFFERS_a_AND_b_SIZEOF(SIZE)  do\
+{                                      \
+    while (type_size >= sizeof(SIZE))  \
+    {                                  \
+        SIZE temp = 0;                 \
+        temp = *((SIZE*)a);            \
+        *((SIZE*)a) = *((SIZE*)b);     \
+        *((SIZE*)b) = temp;            \
+                                       \
+        type_size -= sizeof(SIZE);     \
+        a = ((SIZE*)a + 1);            \
+        b = ((SIZE*)b + 1);            \
+    }                                  \
+} while(0)
 
 void Swap( void* a, void* b, size_t type_size )
 {
@@ -285,8 +225,8 @@ int CompareStringsEnc( const void* a, const void* b )
     assert(a);
     assert(b);
 
-    const char* first_str = ((const String*)a)->str;
-    const char* second_str = ((const String*)b)->str;
+    const char* first_str = *((const char* const*)a);
+    const char* second_str = *((const char* const*)b);
 
     while (*first_str != '\0' && *second_str != '\0')
     {
@@ -310,11 +250,11 @@ int CompareStringsRhyme( const void* a, const void* b )
     assert(a);
     assert(b);
 
-    const char* first_str = ((const String*)a)->str;
-    const char* second_str = ((const String*)b)->str;
+    const char* first_str = *((const char* const*)a);
+    const char* second_str = *((const char* const*)b);
 
-    size_t len_first = ((const String*)a)->len;
-    size_t len_second = ((const String*)b)->len;
+    size_t len_first = strlen(first_str);
+    size_t len_second = strlen(second_str);
 
     first_str += len_first;
     second_str += len_second;
@@ -331,7 +271,6 @@ int CompareStringsRhyme( const void* a, const void* b )
             second_str--;
             len_second--;
         }
-
         if (len_first == 0 || len_second == 0 || tolower(*first_str) != tolower(*second_str))
             return tolower(*first_str) - tolower(*second_str);
         first_str--;
@@ -345,6 +284,7 @@ int CompareStringsRhyme( const void* a, const void* b )
 
     return tolower(*first_str) - tolower(*second_str);
 }
+
 
 int ComparePointersUp( const void* a, const void* b )
 {
