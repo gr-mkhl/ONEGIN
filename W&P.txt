@@ -15912,7 +15912,7 @@ sharply  divided  the  two  armies?"  he  asked  him-
 self and  could  not  answer.  "Can  something
 bad  have  happened  to  me?"  he  wondered  as  he
 got  up:  and  at  that  moment  he  felt  that  some-
-thing superfluous  was  hangingon  his  benumbed
+thing superfluous  was  hangingon  his  bbed
 left  arm.  The  wrist  felt  as  if  it  were  not  his.  He
 examined  his  hand  carefully,  vainly  trying  to
 find  blood  on  it.  "Ah,  here  are  people  com-
@@ -89009,7 +89009,7 @@ acted  badly  by  concerning  himself  with  the  ac-
 tive army  and  disbanding  the  Semenov  regi-
 ment."
 
-It  would  take  a  dozen  pages  to  enumerate
+It  would  take  a  dozen  pages  to  erate
 all  the  reproaches  the  historians  address  to
 him,  based  on  their  knowledge  of  what  is  good
 for  humanity.

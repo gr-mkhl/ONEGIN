@@ -1,4 +1,4 @@
-#include "ONEGIN_.h"
+#include "ONEGIN.h"
 #define MODE 0
 struct ComparatorInfo Comparators[] = {
                                         {"ENCYCLOPEDIA SORT", CompareStringsEnc},
@@ -165,7 +165,7 @@ void FPrintArrOfStr( FILE* stream, char** str_arr, size_t num_str, const char* m
                 fprintf(stream, "%s\n", str_arr[i]);
         #elif MODE == 0
             fprintf(stream, "[%zu]:\taddress = [0x%p], strlen = [%zu], string = <%s>\n",
-                     i, &str_arr[i], str_arr[i], str_arr[i]);
+                     i, &str_arr[i], strlen(str_arr[i]), str_arr[i]);
         #endif
     }
     fprintf(stream, "\nTHE END OF %s\n\n", message);
